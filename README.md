@@ -101,6 +101,8 @@ The model is designed to capture multi-scale atmospheric dynamics by incorporati
 
 Below is a snippet illustrating the custom transformer encoder layer:
 
+
+
 ```python
 @keras.saving.register_keras_serializable()
 class TransformerEncoderLayer(tf.keras.layers.Layer):
@@ -123,3 +125,50 @@ class TransformerEncoderLayer(tf.keras.layers.Layer):
         ffn_output = self.ffn(out1)
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
+```
+### 3. Ensemble Modeling and Training Strategy
+
+- **Ensemble Modeling**
+  
+  Multiple model variants (including different U-Net and transformer configurations) are trained, and predictions are averaged. This ensemble strategy increases robustness and overall performance.
+
+- **Training Strategy**
+
+  - **Loss Function & Metrics:**
+    
+    The model is trained using Mean Squared Error (MSE) loss. Performance is evaluated with a custom weighted R² metric:
+
+    $$
+          R^2 = 1 - \frac{SS_{res}}{SS_{tot}}
+        $$
+
+    where residuals are weighted element-wise by the values from `sample_submission.csv`.
+
+  - **Callbacks**
+    - **Early Stopping:** Monitors validation loss to prevent overfitting.
+    - **Model Checkpointing:** Saves the best model during training based on validation performance.
+    - **Learning Rate Scheduling:** A cosine annealing schedule with warm-up phases is used to stabilize and speed up training.
+
+### 4. Prediction and Submission
+
+- **Post-Processing**
+  
+     After predictions are generated, they are scaled back to the original target values using stored mean and standard deviation values.
+
+- **Weighting Predictions**
+  
+     Final predictions are multiplied element-wise by the sample submission weights.
+
+- **Ensemble Averaging**
+  
+     Predictions from multiple models are averaged before generating the final submission file.
+
+- **Evaluation & Results**
+  
+  Evaluation is performed using a custom weighted R² metric, where predictions are weighted by the values in `sample_submission.csv`. Final leaderboard results were:
+
+    - **Public Score (lb):** 0.73575  
+    - **Private Score (pb):** 0.73955
+
+
+
